@@ -1,0 +1,205 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:pressing_under_pressure/services/audio_manager.dart';
+// import removed: AdsService not used
+import 'package:pressing_under_pressure/ui/components/loading_bar.dart';
+
+// Local helper to avoid deprecated `withOpacity` usage.
+Color _colorWithOpacity(Color c, double opacity) => Color.fromRGBO(c.red, c.green, c.blue, opacity);
+
+/// Main menu screen with a large START button and a subtle loading bar.
+///
+/// This widget displays the game's entry screen and navigates to the
+/// game screen via a named route (`/game`). It plays short SFX when
+/// buttons are pressed and shows a store icon that opens an external URL.
+class MainMenuScreen extends StatefulWidget {
+  const MainMenuScreen({super.key});
+
+  @override
+  State<MainMenuScreen> createState() => _MainMenuScreenState();
+}
+
+class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStateMixin {
+  late AnimationController _loadingController;
+  late Animation<double> _loadingAnimation;
+  bool _ready = false;
+  static const String _storeUrl = 'https://apps.apple.com/us/developer/imad-hamidi/id1781018469';
+
+  // START button press animation (3D effect)
+  late AnimationController _startPressController;
+  
+
+  @override
+  void initState() {
+    super.initState();
+    // Loading bar animation: when completed, mark menu as ready.
+    _loadingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _loadingAnimation = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _loadingController, curve: Curves.easeInOut))
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) setState(() => _ready = true);
+      });
+    _loadingController.forward();
+
+    // Start button press animation controller
+    _startPressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _startPressController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _loadingController.dispose();
+    try {
+      _startPressController.dispose();
+    } catch (_) {}
+    super.dispose();
+  }
+
+  /// Open the developer store page in an external browser/app.
+  Future<void> _openStore() async {
+    final Uri uri = Uri.parse(_storeUrl);
+    try {
+      final bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      if (!launched) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open store link')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open store link')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double width = MediaQuery.of(context).size.width * 0.7;
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+            // Background image (fills entire screen)
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/menu.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+            // Subtle dark overlay so foreground controls remain readable
+            Container(color: _colorWithOpacity(Colors.black, 0.35)),
+
+          // Store icon (top-right)
+          Positioned(
+            top: 18,
+            right: 18,
+            child: SafeArea(
+              child: IconButton(
+                icon: const Icon(Icons.store, color: Colors.white70, size: 28),
+                onPressed: () {
+                  AudioManager().playSfx('click.wav');
+                  _openStore();
+                },
+              ),
+            ),
+          ),
+
+          // Center content with loading bar and START button
+          SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+
+                  // Neon loading bar — shows progress until ready
+                  LoadingBar(animation: _loadingAnimation, width: width),
+
+                  const SizedBox(height: 28),
+
+                  // Difficulty selection buttons: Easy / Medium / Hard
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _colorWithOpacity(Colors.green, 0.75),
+                          minimumSize: const Size(100, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                            side: BorderSide(color: _colorWithOpacity(Colors.greenAccent, 0.9), width: 2),
+                          ),
+                          elevation: 6,
+                        ),
+                        onPressed: _ready
+                            ? () async {
+                                AudioManager().playSfx('click.wav');
+                                final nav = Navigator.of(context);
+                                // Removed: showAppOpen (dead code)
+                                if (!mounted) return;
+                                nav.pushReplacementNamed('/game', arguments: 'easy');
+                              }
+                            : null,
+                        child: const Text('Easy'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _colorWithOpacity(Colors.orange, 0.78),
+                          minimumSize: const Size(100, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                            side: BorderSide(color: _colorWithOpacity(Colors.orangeAccent, 0.9), width: 2),
+                          ),
+                          elevation: 6,
+                        ),
+                        onPressed: _ready
+                            ? () async {
+                                AudioManager().playSfx('click.wav');
+                                final nav = Navigator.of(context);
+                                // Removed: showAppOpen (dead code)
+                                if (!mounted) return;
+                                nav.pushReplacementNamed('/game', arguments: 'medium');
+                              }
+                            : null,
+                        child: const Text('Medium'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _colorWithOpacity(Colors.redAccent, 0.78),
+                          minimumSize: const Size(100, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                            side: BorderSide(color: _colorWithOpacity(Colors.redAccent, 0.9), width: 2),
+                          ),
+                          elevation: 6,
+                        ),
+                        onPressed: _ready
+                            ? () async {
+                                AudioManager().playSfx('click.wav');
+                                final nav = Navigator.of(context);
+                                // Removed: showAppOpen (dead code)
+                                if (!mounted) return;
+                                nav.pushReplacementNamed('/game', arguments: 'hard');
+                              }
+                            : null,
+                        child: const Text('Hard'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
