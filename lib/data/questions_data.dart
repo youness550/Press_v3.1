@@ -146,6 +146,19 @@ List<Map<String, dynamic>> questionsForDifficulty(String difficulty) {
       return List<Map<String, dynamic>>.from(easyQuestions);
     case 'hard':
       return List<Map<String, dynamic>>.from(hardQuestions);
+    case 'master':
+      // Master is basically Hard but with 40% less time.
+      return hardQuestions.map((q) => {
+        ...q,
+        'sec': (q['sec'] as double) * 0.6,
+      }).toList();
+    case 'extreme':
+      // Extreme is 80% less time and requires slightly more clicks to make it brutal.
+      return hardQuestions.map((q) => {
+        ...q,
+        'sec': (q['sec'] as double) * 0.2,
+        'target': q['type'] == 'click' ? (q['target'] as int) + 2 : q['target'],
+      }).toList();
     case 'medium':
     default:
       return List<Map<String, dynamic>>.from(mediumQuestions);

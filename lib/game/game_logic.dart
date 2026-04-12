@@ -19,7 +19,8 @@ class GameLogic {
     return checkWin(currentQuestionIndex, clicks, progress) ? ValidationResult.win : ValidationResult.fail;
   }
 
-  int getCheckpointIndex(int currentIndex) {
+  int getCheckpointIndex(int currentIndex, String difficulty) {
+    if (difficulty == 'master' || difficulty == 'extreme') return 0;
     if (currentIndex < 17) return 0;
     if (currentIndex < 34) return 17;
     return 34;

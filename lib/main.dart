@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:pressing_under_pressure/screens/menu_screen.dart';
 import 'package:pressing_under_pressure/screens/game_screen.dart';
 import 'package:pressing_under_pressure/services/ads_service.dart';
+import 'package:pressing_under_pressure/services/progress_service.dart';
 
 /// App entrypoint. Keeps `main.dart` minimal: app initialization
 /// and route configuration only.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ProgressService().init();
   await AdsService().initialize();
   runApp(const PressingUnderPressure());
 }

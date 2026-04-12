@@ -11,6 +11,7 @@ import 'package:pressing_under_pressure/game/game_logic.dart';
 import 'package:pressing_under_pressure/data/questions_data.dart';
 import 'package:pressing_under_pressure/ui/components/image_style_timer_painter.dart';
 import 'package:pressing_under_pressure/ui/components/background_beams.dart';
+import 'package:pressing_under_pressure/services/progress_service.dart';
 
 // Helper to create a color with explicit opacity without using deprecated
 // `withOpacity` to avoid precision-loss deprecation warnings.
@@ -65,6 +66,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     difficulty = widget.difficulty;
+    bestScore = ProgressService().getBestScore(difficulty);
     questions = questionsForDifficulty(difficulty);
     _prepareQuestionsForDifficulty();
     gameLogic = GameLogic(questions: questions);
@@ -264,7 +266,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final int checkpointIndex = _pendingCheckpointIndex;
     final int finalScore = currentQuestionIndex;
     setState(() {
-      if (finalScore > bestScore) bestScore = finalScore;
+      if (finalScore > bestScore) {
+        bestScore = finalScore;
+        ProgressService().saveBestScore(difficulty, bestScore);
+      }
     });
 
     dynamic restart;
@@ -332,7 +337,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Determine checkpoint index based on rules in the original app.
-  int getCheckpointIndex(int currentIndex) => gameLogic.getCheckpointIndex(currentIndex);
+  int getCheckpointIndex(int currentIndex) => gameLogic.getCheckpointIndex(currentIndex, difficulty);
 
   /// Trigger the failure sequence: sounds, animations, and scheduling the
   /// game over dialog.
@@ -342,7 +347,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     setState(() => isFailing = true);
 
     // Store checkpoint to apply after user decision
-    _pendingCheckpointIndex = gameLogic.getCheckpointIndex(currentQuestionIndex);
+    _pendingCheckpointIndex = gameLogic.getCheckpointIndex(currentQuestionIndex, difficulty);
     _shouldShowGameOver = true;
 
     // Ensure not paused during failure
@@ -374,9 +379,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _showResult(String msg, {bool isWin = false}) {
     timer?.cancel();
     if (isWin) {
+      if (difficulty == 'hard') ProgressService().markHardCompleted();
+      if (difficulty == 'master') ProgressService().markMasterCompleted();
+      
       setState(() {
         final int finalScore = currentQuestionIndex + 1;
-        if (finalScore > bestScore) bestScore = finalScore;
+        if (finalScore > bestScore) {
+          bestScore = finalScore;
+          ProgressService().saveBestScore(difficulty, bestScore);
+        }
       });
       // Show Félicitations dialog with Next Level choice
       showDialog(
@@ -435,6 +446,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 animation: _dramaticController,
                 builder: (context, child) {
                   double shakeOffset = _shakeAnimation.value * 15 * sin(_shakeAnimation.value * pi * 4);
+                  if (difficulty == 'extreme' && !isFailing) {
+                    shakeOffset += sin(DateTime.now().millisecondsSinceEpoch / 40.0) * 3.0; // Subtle constant shake
+                  }
                   Color displayColor = _colorAnimation.value ?? const Color(0xFF00FF00);
                   final double dramaticScale = _dramaticScale.value;
                   final double dramaticRot = _dramaticRotate.value;
@@ -737,6 +751,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 );
               },
             ),
+
+            if (difficulty == 'extreme')
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    color: _colorWithOpacity(Colors.redAccent, 0.12),
+                  ),
+                ),
+              ),
+
           ],
         ),
       ),
