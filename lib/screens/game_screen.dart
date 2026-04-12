@@ -11,12 +11,50 @@ import 'package:pressing_under_pressure/game/game_logic.dart';
 import 'package:pressing_under_pressure/data/questions_data.dart';
 import 'package:pressing_under_pressure/ui/components/image_style_timer_painter.dart';
 import 'package:pressing_under_pressure/ui/components/background_beams.dart';
+import 'package:pressing_under_pressure/ui/components/neon_text.dart';
+import 'package:pressing_under_pressure/ui/components/glass_card.dart';
+import 'package:pressing_under_pressure/ui/components/animated_counter.dart';
 import 'package:pressing_under_pressure/services/progress_service.dart';
 
 // Helper to create a color with explicit opacity without using deprecated
 // `withOpacity` to avoid precision-loss deprecation warnings.
 Color _colorWithOpacity(Color c, double opacity) =>
   Color.fromRGBO(c.red, c.green, c.blue, opacity);
+
+/// Color palette for each difficulty.
+Color _difficultyColor(String difficulty) {
+  switch (difficulty.toLowerCase()) {
+    case 'easy':
+      return const Color(0xFF00CC44);
+    case 'medium':
+      return const Color(0xFF00FF66);
+    case 'hard':
+      return const Color(0xFFFF3344);
+    case 'master':
+      return const Color(0xFFFF8C00);
+    case 'extreme':
+      return const Color(0xFFCC0033);
+    default:
+      return const Color(0xFF00FF66);
+  }
+}
+
+String _difficultyLabel(String difficulty) {
+  switch (difficulty.toLowerCase()) {
+    case 'easy':
+      return 'EASY';
+    case 'medium':
+      return 'MEDIUM';
+    case 'hard':
+      return 'HARD';
+    case 'master':
+      return 'MASTER';
+    case 'extreme':
+      return 'EXTREME';
+    default:
+      return difficulty.toUpperCase();
+  }
+}
 
 /// Main game screen that presents the challenge nodes and handles
 /// gameplay animations, timers, scoring and transitions.
@@ -47,6 +85,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // Press animation for 3D button effect
   late AnimationController _pressController;
   late Animation<double> _pressAnimation;
+
+  // Pulsing glow on the center button
+  late AnimationController _pulseGlowController;
+  late Animation<double> _pulseGlow;
+
+  // Node transition animation
+  late AnimationController _nodeTransitionController;
+  late Animation<double> _nodeScale;
 
   // Game over navigation guards
   bool _shouldShowGameOver = false;
@@ -84,7 +130,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     _colorAnimation = ColorTween(
-      begin: const Color(0xFF00FF00),
+      begin: _difficultyColor(difficulty),
       end: const Color(0xFFFF0000),
     ).animate(_colorController);
     _shakeController.addListener(() => setState(() {}));
@@ -115,6 +161,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
     _pressController.addListener(() => setState(() {}));
 
+    // Pulse glow
+    _pulseGlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _pulseGlow = Tween<double>(begin: 0.3, end: 0.8).animate(
+      CurvedAnimation(parent: _pulseGlowController, curve: Curves.easeInOut),
+    );
+    _pulseGlowController.addListener(() => setState(() {}));
+
+    // Node transition
+    _nodeTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _nodeScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.85), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.85, end: 1.05), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.05, end: 1.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _nodeTransitionController, curve: Curves.easeInOut));
+    _nodeTransitionController.addListener(() => setState(() {}));
+
     // Initialize background music and SFX via the AudioManager service
     _loadAudioPreferencesAndStart();
 
@@ -133,6 +201,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _shakeController.dispose();
     _colorController.dispose();
     _dramaticController.dispose();
+    _pulseGlowController.dispose();
+    _nodeTransitionController.dispose();
     try {
       _pressController.dispose();
     } catch (_) {}
@@ -242,14 +312,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         setState(() {
           currentQuestionIndex++;
         });
-        // Removed: showInterstitial (dead code)
         AudioManager().playSfx('ping.wav');
+        _nodeTransitionController.forward(from: 0);
         startLevel();
       } else {
         _showResult("SYSTEM FULLY COMPROMISED 🎉", isWin: true);
       }
     } else {
-      // Removed: showInterstitial (dead code)
       _triggerFailureAnimation();
     }
   }
@@ -277,7 +346,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       // Show GameOver screen, ad logic handled inside GameOverScreen
       final navigator = Navigator.of(context);
       restart = await navigator.push<dynamic>(MaterialPageRoute(
-        builder: (c) => GameOverScreen(score: finalScore, bestScore: bestScore),
+        builder: (c) => GameOverScreen(
+          score: finalScore,
+          bestScore: bestScore,
+          difficulty: difficulty,
+        ),
         fullscreenDialog: true,
       ));
     } catch (_) {
@@ -353,9 +426,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     // Ensure not paused during failure
     _isPaused = false;
 
-    // Count the loss for interstitial logic
-    // Removed: incrementLossCount (dead code)
-
     // Play fail sound and stop music
     AudioManager().playSfx('fail.wav');
     try {
@@ -389,21 +459,58 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ProgressService().saveBestScore(difficulty, bestScore);
         }
       });
-      // Show Félicitations dialog with Next Level choice
+
+      final diffColor = _difficultyColor(difficulty);
+
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (c) => AlertDialog(
-          backgroundColor: Colors.black,
-          title: Text('Félicitations', textAlign: TextAlign.center, style: const TextStyle(color: Colors.green)),
-          content: const Text('Would you like to move to the next difficulty level?', textAlign: TextAlign.center, style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color(0xF0050505),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: _colorWithOpacity(diffColor, 0.5), width: 1.5),
+          ),
+          title: NeonText(
+            text: '◆ SYSTEM COMPROMISED ◆',
+            fontSize: 18,
+            color: diffColor,
+            enableFlicker: true,
+            enableGlitch: false,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'All nodes breached!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _colorWithOpacity(Colors.white, 0.8),
+                  fontFamily: 'Courier',
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Move to next level?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _colorWithOpacity(Colors.white, 0.6),
+                  fontFamily: 'Courier',
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
-            TextButton(
-              onPressed: () async {
+            _buildDialogButton(
+              'Next Level',
+              diffColor,
+              () async {
                 if (!mounted) return;
                 AudioManager().playSfx('click.wav');
                 Navigator.pop(context);
-                // determine next difficulty
                 String next = 'medium';
                 if (difficulty.toLowerCase() == 'easy') {
                   next = 'medium';
@@ -412,18 +519,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 } else {
                   next = 'hard';
                 }
-                // navigate to next difficulty (reset state)
                 if (!mounted) return;
                 Navigator.of(context).pushReplacementNamed('/game', arguments: next);
               },
-              child: const Text('Next Level'),
             ),
-            TextButton(
-              onPressed: () async {
+            const SizedBox(width: 8),
+            _buildDialogButton(
+              'Menu',
+              _colorWithOpacity(Colors.white, 0.4),
+              () async {
                 AudioManager().playSfx('click.wav');
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
               },
-              child: const Text('Back to Menu'),
             ),
           ],
         ),
@@ -431,25 +538,57 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
+  Widget _buildDialogButton(String label, Color color, VoidCallback onPressed) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _colorWithOpacity(color, 0.5), width: 1),
+      ),
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontFamily: 'Courier',
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final diffColor = _difficultyColor(difficulty);
+    final displayColor = _colorAnimation.value ?? diffColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF001100),
+      backgroundColor: const Color(0xFF000a00),
       // Banner ad at bottom
       bottomNavigationBar: SafeArea(child: AdsService().getBannerWidget()),
       body: SafeArea(
         child: Stack(
           children: [
-            const BackgroundBeams(),
+            // Particle background (colored per difficulty)
+            BackgroundBeams(
+              baseColor: isFailing ? const Color(0xFFFF0000) : diffColor,
+              intensified: isFailing || difficulty == 'extreme',
+            ),
+
+            // Main game content
             Center(
               child: AnimatedBuilder(
                 animation: _dramaticController,
                 builder: (context, child) {
                   double shakeOffset = _shakeAnimation.value * 15 * sin(_shakeAnimation.value * pi * 4);
                   if (difficulty == 'extreme' && !isFailing) {
-                    shakeOffset += sin(DateTime.now().millisecondsSinceEpoch / 40.0) * 3.0; // Subtle constant shake
+                    shakeOffset += sin(DateTime.now().millisecondsSinceEpoch / 40.0) * 3.0;
                   }
-                  Color displayColor = _colorAnimation.value ?? const Color(0xFF00FF00);
                   final double dramaticScale = _dramaticScale.value;
                   final double dramaticRot = _dramaticRotate.value;
                   final double overlayOp = _dramaticOverlay.value;
@@ -464,125 +603,224 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     alignment: Alignment.center,
                     child: Transform.translate(
                       offset: Offset(shakeOffset * (1.0 + overlayOp), 0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            "NODE: ${currentQuestionIndex + 1}/${questions.length}",
-                            style: TextStyle(color: displayColor, letterSpacing: 2, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Text("BEST: $bestScore", style: TextStyle(color: _colorWithOpacity(displayColor, 0.8), fontSize: 12, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 10),
-                          const SizedBox(height: 60),
+                      child: Transform.scale(
+                        scale: _nodeScale.value,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            const SizedBox(height: 20),
 
-                          // Main interactive circular area
-                          GestureDetector(
-                            onTapDown: (isFailing || _isPaused)
-                                ? null
-                                : (_) async {
-                                    if (isFailing || _isPaused) return;
-                                    AudioManager().playSfx('click.wav');
-                                    _pressController.forward();
-                                    setState(() => isPressed = true);
-                                  },
-                            onTapUp: (isFailing || _isPaused)
-                                ? null
-                                : (_) {
-                                    _pressController.reverse();
-                                    setState(() {
-                                      isPressed = false;
-                                      clicks++;
-                                    });
-                                    if (questions[currentQuestionIndex]['type'] == "wait") validate();
-                                  },
-                            onTapCancel: () {
-                              _pressController.reverse();
-                              setState(() => isPressed = false);
-                            },
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: <Widget>[
-                                SizedBox(
-                                  width: 300,
-                                  height: 300,
-                                  child: CustomPaint(
-                                    painter: ImageStyleTimerPainter(progress, displayColor),
-                                  ),
-                                ),
-
-                                // Bottom shadow layer
-                                Transform.translate(
-                                  offset: Offset(0, _pressAnimation.value / 2 + 8),
-                                  child: Container(
-                                    width: 190,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.6),
-                                      borderRadius: BorderRadius.circular(40),
-                                      boxShadow: [
-                                          BoxShadow(color: _colorWithOpacity(Colors.black, 0.5), blurRadius: 20, spreadRadius: 2),
-                                      ],
+                            // Main interactive circular area
+                            GestureDetector(
+                              onTapDown: (isFailing || _isPaused)
+                                  ? null
+                                  : (_) async {
+                                      if (isFailing || _isPaused) return;
+                                      AudioManager().playSfx('click.wav');
+                                      _pressController.forward();
+                                      setState(() => isPressed = true);
+                                    },
+                              onTapUp: (isFailing || _isPaused)
+                                  ? null
+                                  : (_) {
+                                      _pressController.reverse();
+                                      setState(() {
+                                        isPressed = false;
+                                        clicks++;
+                                      });
+                                      if (questions[currentQuestionIndex]['type'] == "wait") validate();
+                                    },
+                              onTapCancel: () {
+                                _pressController.reverse();
+                                setState(() => isPressed = false);
+                              },
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: <Widget>[
+                                  // Timer ring
+                                  SizedBox(
+                                    width: 300,
+                                    height: 300,
+                                    child: CustomPaint(
+                                      painter: ImageStyleTimerPainter(progress, displayColor),
                                     ),
                                   ),
-                                ),
 
-                                // Top colored layer
-                                Transform.translate(
-                                  offset: Offset(0, _pressAnimation.value),
-                                  child: Container(
-                                    width: 180,
-                                    height: 180,
+                                  // Pulsing outer glow
+                                  Container(
+                                    width: 200,
+                                    height: 200,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.black,
-                                      border: Border.all(color: _colorWithOpacity(displayColor, 0.5), width: 4),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: _colorWithOpacity(displayColor, isFailing ? 0.9 : 0.4),
-                                          blurRadius: isFailing ? 30 : 20,
-                                          spreadRadius: isFailing ? 5 : 0,
+                                          color: _colorWithOpacity(
+                                            displayColor,
+                                            _pulseGlow.value * (isFailing ? 0.8 : 0.25),
+                                          ),
+                                          blurRadius: 40,
+                                          spreadRadius: 8,
                                         ),
-                                        BoxShadow(color: _colorWithOpacity(Colors.black, 0.8), blurRadius: 20),
                                       ],
                                     ),
-                                    child: Center(
-                                      child: SingleChildScrollView(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: Text(
-                                            questions[currentQuestionIndex]['q'],
-                                            textAlign: TextAlign.center,
-                                            maxLines: 5,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                              letterSpacing: 1.0,
-                                              shadows: [
-                                                Shadow(
-                                                  color: _colorWithOpacity(displayColor, isFailing ? 0.95 : 0.8),
-                                                  blurRadius: isFailing ? 25 : 15,
-                                                )
-                                              ],
+                                  ),
+
+                                  // Bottom shadow layer
+                                  Transform.translate(
+                                    offset: Offset(0, _pressAnimation.value / 2 + 8),
+                                    child: Container(
+                                      width: 190,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: _colorWithOpacity(Colors.black, 0.6),
+                                        borderRadius: BorderRadius.circular(40),
+                                        boxShadow: [
+                                            BoxShadow(color: _colorWithOpacity(Colors.black, 0.5), blurRadius: 20, spreadRadius: 2),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Top colored layer (main button)
+                                  Transform.translate(
+                                    offset: Offset(0, _pressAnimation.value),
+                                    child: Container(
+                                      width: 180,
+                                      height: 180,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            _colorWithOpacity(displayColor, 0.08),
+                                            const Color(0xFF050505),
+                                          ],
+                                          stops: const [0.0, 0.85],
+                                        ),
+                                        border: Border.all(
+                                          color: _colorWithOpacity(displayColor, isFailing ? 0.8 : 0.5),
+                                          width: 3,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _colorWithOpacity(displayColor, isFailing ? 0.9 : 0.35),
+                                            blurRadius: isFailing ? 35 : 20,
+                                            spreadRadius: isFailing ? 6 : 1,
+                                          ),
+                                          // Inner highlight
+                                          BoxShadow(
+                                            color: _colorWithOpacity(displayColor, 0.1),
+                                            blurRadius: 60,
+                                            spreadRadius: -10,
+                                          ),
+                                          BoxShadow(color: _colorWithOpacity(Colors.black, 0.8), blurRadius: 20),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: SingleChildScrollView(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(14.0),
+                                            child: Text(
+                                              questions[currentQuestionIndex]['q'],
+                                              textAlign: TextAlign.center,
+                                              maxLines: 5,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 1.0,
+                                                fontFamily: 'Courier',
+                                                height: 1.4,
+                                                shadows: [
+                                                  Shadow(
+                                                    color: _colorWithOpacity(displayColor, isFailing ? 0.95 : 0.8),
+                                                    blurRadius: isFailing ? 25 : 15,
+                                                  )
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
 
-                          const SizedBox(height: 60),
-                          Text("DATA PACKETS: $clicks", style: TextStyle(color: displayColor, fontSize: 16)),
-                          const SizedBox(height: 20),
-                          Text("PROGRESS: ${(progress * 100).toStringAsFixed(0)}%",
-                              style: TextStyle(color: displayColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                        ],
+                            const SizedBox(height: 30),
+
+                            // Click counter with animated bounce
+                            AnimatedCounter(
+                              value: clicks,
+                              prefix: '⬡ DATA PACKETS: ',
+                              color: displayColor,
+                              fontSize: 15,
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Progress gauge bar
+                            SizedBox(
+                              width: 200,
+                              child: Column(
+                                children: [
+                                  // Progress bar
+                                  Container(
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(3),
+                                      color: _colorWithOpacity(displayColor, 0.1),
+                                      border: Border.all(
+                                        color: _colorWithOpacity(displayColor, 0.2),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: FractionallySizedBox(
+                                        widthFactor: progress.clamp(0.0, 1.0),
+                                        alignment: Alignment.centerLeft,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: progress > 0.8
+                                                  ? [const Color(0xFFFF4400), const Color(0xFFFF0000)]
+                                                  : [displayColor, _colorWithOpacity(displayColor, 0.7)],
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _colorWithOpacity(
+                                                  progress > 0.8 ? const Color(0xFFFF0000) : displayColor,
+                                                  0.5,
+                                                ),
+                                                blurRadius: 6,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${(progress * 100).toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      color: _colorWithOpacity(
+                                        progress > 0.8 ? const Color(0xFFFF4400) : displayColor,
+                                        0.7,
+                                      ),
+                                      fontSize: 11,
+                                      fontFamily: 'Courier',
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -590,18 +828,112 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
             ),
 
+            // HUD Top Bar
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _colorWithOpacity(Colors.black, 0.4),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: _colorWithOpacity(diffColor, 0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Difficulty badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: _colorWithOpacity(diffColor, 0.15),
+                            border: Border.all(
+                              color: _colorWithOpacity(diffColor, 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            _difficultyLabel(difficulty),
+                            style: TextStyle(
+                              color: diffColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Courier',
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Node counter
+                        Expanded(
+                          child: Text(
+                            'NODE ${currentQuestionIndex + 1}/${questions.length}',
+                            style: TextStyle(
+                              color: _colorWithOpacity(diffColor, 0.85),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Courier',
+                              letterSpacing: 2,
+                              shadows: [
+                                Shadow(
+                                  color: _colorWithOpacity(diffColor, 0.4),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Best score
+                        Text(
+                          '★ BEST: $bestScore',
+                          style: TextStyle(
+                            color: _colorWithOpacity(const Color(0xFFFFD700), 0.7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Courier',
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             // Pause button
             Positioned(
-              top: 40,
-              right: 20,
-              child: SafeArea(
+              top: 48,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _colorWithOpacity(diffColor, 0.3),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _colorWithOpacity(diffColor, 0.1),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
                 child: FloatingActionButton.small(
-                          backgroundColor: _colorWithOpacity(Colors.black, 0.6),
+                  backgroundColor: _colorWithOpacity(Colors.black, 0.7),
                   onPressed: (isFailing || _dramaticController.isAnimating) ? null : () async {
                     AudioManager().playSfx('click.wav');
                     if (_isPaused) {
-                      // user is resuming
-                      // Removed: incrementNavClickAndMaybeShowInterstitial (dead code)
                       setState(() {
                         _isPaused = false;
                         startLevelTimer();
@@ -615,7 +947,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       });
                     }
                   },
-                  child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, color: Colors.redAccent),
+                  child: Icon(
+                    _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    color: diffColor,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
@@ -626,77 +962,73 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: IgnorePointer(
                   ignoring: false,
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
+                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                     child: Container(
-                      color: _colorWithOpacity(Colors.black, 0.45),
+                      color: _colorWithOpacity(Colors.black, 0.6),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text("PAUSED", style: TextStyle(color: _colorWithOpacity(Colors.white, 0.95), fontSize: 32, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 20),
-                            // Music & Sound toggles
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Column(
-                                  children: [
-                                    const Text('Music', style: TextStyle(color: Colors.white)),
-                                    Switch(
-                                      value: AudioManager().musicEnabled,
-                                      activeThumbColor: Colors.green,
-                                      inactiveThumbColor: Colors.red,
-                                      onChanged: (v) async {
-                                        await AudioManager().setMusicEnabled(v);
-                                        // Only start music immediately if game is not paused
-                                        if (v && !_isPaused) {
-                                          try { await AudioManager().playBackground('sounds/bg_loop.mp3'); } catch (_) {}
-                                        }
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 24),
-                                Column(
-                                  children: [
-                                    const Text('Sound', style: TextStyle(color: Colors.white)),
-                                    Switch(
-                                      value: AudioManager().soundEnabled,
-                                      activeThumbColor: Colors.green,
-                                      inactiveThumbColor: Colors.red,
-                                      onChanged: (v) async {
-                                        await AudioManager().setSoundEnabled(v);
-                                        // play a tiny click if enabling to give feedback
-                                        if (v) { try { await AudioManager().playSfx('click.wav'); } catch (_) {} }
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
+                            NeonText(
+                              text: '◇ PAUSED ◇',
+                              fontSize: 28,
+                              color: diffColor,
+                              enableFlicker: true,
+                              enableGlitch: false,
+                              glowIntensity: 0.8,
                             ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                              onPressed: () async {
+                            const SizedBox(height: 30),
+
+                            // Music & Sound toggles
+                            GlassCard(
+                              borderColor: _colorWithOpacity(diffColor, 0.3),
+                              backgroundColor: _colorWithOpacity(diffColor, 0.05),
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildToggle('MUSIC', AudioManager().musicEnabled, diffColor, (v) async {
+                                    await AudioManager().setMusicEnabled(v);
+                                    if (v && !_isPaused) {
+                                      try { await AudioManager().playBackground('sounds/bg_loop.mp3'); } catch (_) {}
+                                    }
+                                    setState(() {});
+                                  }),
+                                  const SizedBox(width: 32),
+                                  _buildToggle('SOUND', AudioManager().soundEnabled, diffColor, (v) async {
+                                    await AudioManager().setSoundEnabled(v);
+                                    if (v) { try { await AudioManager().playSfx('click.wav'); } catch (_) {} }
+                                    setState(() {});
+                                  }),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Resume button
+                            _buildPauseButton(
+                              'RESUME',
+                              diffColor,
+                              Icons.play_arrow_rounded,
+                              () async {
                                 AudioManager().playSfx('click.wav');
-                                // Removed: incrementNavClickAndMaybeShowInterstitial (dead code)
                                 setState(() {
                                   _isPaused = false;
                                   startLevelTimer();
                                   try { if (AudioManager().musicEnabled) { AudioManager().resumeBackground(); } } catch (_) {}
                                 });
                               },
-                              child: const Text("Resume"),
                             ),
                             const SizedBox(height: 12),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                              onPressed: () async {
+
+                            // Restart button
+                            _buildPauseButton(
+                              'RESTART',
+                              const Color(0xFFFF4444),
+                              Icons.refresh_rounded,
+                              () async {
                                 AudioManager().playSfx('click.wav');
-                                // Removed: incrementNavClickAndMaybeShowInterstitial (dead code)
-                                // Full restart from pause: reset progress and ignore checkpoints
                                 timer?.cancel();
                                 setState(() {
                                   _isPaused = false;
@@ -713,7 +1045,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 try { if (AudioManager().musicEnabled) { AudioManager().resumeBackground(); } } catch (_) {}
                                 startLevel();
                               },
-                              child: const Text("Restart"),
                             ),
                           ],
                         ),
@@ -766,73 +1097,360 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  Widget _buildToggle(String label, bool value, Color color, ValueChanged<bool> onChanged) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _colorWithOpacity(Colors.white, 0.7),
+            fontSize: 11,
+            fontFamily: 'Courier',
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Switch(
+          value: value,
+          activeThumbColor: color,
+          activeTrackColor: _colorWithOpacity(color, 0.3),
+          inactiveThumbColor: _colorWithOpacity(Colors.red, 0.7),
+          inactiveTrackColor: _colorWithOpacity(Colors.red, 0.15),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPauseButton(String label, Color color, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: 200,
+      child: GlassCard(
+        borderColor: _colorWithOpacity(color, 0.5),
+        backgroundColor: _colorWithOpacity(color, 0.08),
+        padding: EdgeInsets.zero,
+        borderRadius: 14,
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontFamily: 'Courier',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Simple full-screen Game Over view shown after a failure.
-///
-/// The 'Restart' button returns `true` to the caller so the game can
-/// restart from checkpoint. The 'Menu' button returns the user to the
-/// main menu route (`/`).
+/// Cinematic Game Over screen with glitch effect, animated score,
+/// and glassmorphism action cards.
 class GameOverScreen extends StatefulWidget {
   final int score;
   final int bestScore;
-  const GameOverScreen({super.key, required this.score, required this.bestScore});
+  final String difficulty;
+  const GameOverScreen({
+    super.key,
+    required this.score,
+    required this.bestScore,
+    this.difficulty = 'medium',
+  });
 
   @override
   State<GameOverScreen> createState() => _GameOverScreenState();
 }
 
-class _GameOverScreenState extends State<GameOverScreen> {
+class _GameOverScreenState extends State<GameOverScreen> with TickerProviderStateMixin {
+  late AnimationController _entranceController;
+  late Animation<double> _titleFade;
+  late Animation<double> _scoreFade;
+  late Animation<double> _buttonsFade;
+  late Animation<double> _titleScale;
+
+  // Score counter animation
+  late AnimationController _scoreCountController;
+  int _displayedScore = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _titleFade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _entranceController, curve: const Interval(0.0, 0.3, curve: Curves.easeOut)),
+    );
+    _titleScale = Tween<double>(begin: 1.5, end: 1.0).animate(
+      CurvedAnimation(parent: _entranceController, curve: const Interval(0.0, 0.3, curve: Curves.easeOutBack)),
+    );
+    _scoreFade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _entranceController, curve: const Interval(0.25, 0.55, curve: Curves.easeOut)),
+    );
+    _buttonsFade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _entranceController, curve: const Interval(0.5, 1.0, curve: Curves.easeOut)),
+    );
+    _entranceController.forward();
+
+    // Animate score counting up
+    _scoreCountController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: (widget.score * 60).clamp(300, 2000)),
+    );
+    _scoreCountController.addListener(() {
+      setState(() {
+        _displayedScore = (widget.score * _scoreCountController.value).round();
+      });
+    });
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _scoreCountController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _scoreCountController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final diffColor = _difficultyColor(widget.difficulty);
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("GAME OVER", style: TextStyle(color: Colors.redAccent.shade200, fontSize: 36, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Text("Score: ${widget.score}", style: const TextStyle(color: Colors.white, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text("Best: ${widget.bestScore}", style: const TextStyle(color: Colors.greenAccent, fontSize: 16)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    minimumSize: const Size(110, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  onPressed: () async {
-                    AudioManager().playSfx('click.wav');
-                    final nav = Navigator.of(context);
-                    await AdsService().incrementLossAndMaybeShowInterstitial();
-                    nav.pop(true); // restart from checkpoint
-                  },
-                  child: const Text("Restart", style: TextStyle(fontSize: 14)),
+      backgroundColor: const Color(0xFF050000),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Red particle background
+          const BackgroundBeams(
+            baseColor: Color(0xFFFF2222),
+            intensified: true,
+          ),
+
+          // Dark overlay
+          Container(color: _colorWithOpacity(Colors.black, 0.5)),
+
+          // Content
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // SYSTEM FAILURE title
+                    FadeTransition(
+                      opacity: _titleFade,
+                      child: ScaleTransition(
+                        scale: _titleScale,
+                        child: const NeonText(
+                          text: 'SYSTEM\nFAILURE',
+                          fontSize: 36,
+                          color: Color(0xFFFF2222),
+                          enableFlicker: true,
+                          enableGlitch: true,
+                          glowIntensity: 1.5,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    FadeTransition(
+                      opacity: _titleFade,
+                      child: Text(
+                        '◆ CONNECTION TERMINATED ◆',
+                        style: TextStyle(
+                          color: _colorWithOpacity(const Color(0xFFFF4444), 0.6),
+                          fontSize: 11,
+                          fontFamily: 'Courier',
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Score card
+                    FadeTransition(
+                      opacity: _scoreFade,
+                      child: GlassCard(
+                        borderColor: _colorWithOpacity(const Color(0xFFFF2222), 0.4),
+                        backgroundColor: _colorWithOpacity(const Color(0xFFFF2222), 0.05),
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                        child: Column(
+                          children: [
+                            Text(
+                              'NODES BREACHED',
+                              style: TextStyle(
+                                color: _colorWithOpacity(Colors.white, 0.5),
+                                fontSize: 11,
+                                fontFamily: 'Courier',
+                                letterSpacing: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$_displayedScore',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Courier',
+                                shadows: [
+                                  Shadow(
+                                    color: _colorWithOpacity(const Color(0xFFFF2222), 0.8),
+                                    blurRadius: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 1,
+                              color: _colorWithOpacity(const Color(0xFFFF2222), 0.2),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  color: _colorWithOpacity(const Color(0xFFFFD700), 0.7),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'BEST: ${widget.bestScore}',
+                                  style: TextStyle(
+                                    color: _colorWithOpacity(const Color(0xFFFFD700), 0.7),
+                                    fontSize: 14,
+                                    fontFamily: 'Courier',
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // Action buttons
+                    FadeTransition(
+                      opacity: _buttonsFade,
+                      child: Column(
+                        children: [
+                          // Restart button
+                          SizedBox(
+                            width: 220,
+                            child: GlassCard(
+                              borderColor: _colorWithOpacity(diffColor, 0.6),
+                              backgroundColor: _colorWithOpacity(diffColor, 0.1),
+                              padding: EdgeInsets.zero,
+                              borderRadius: 14,
+                              onTap: () async {
+                                AudioManager().playSfx('click.wav');
+                                final nav = Navigator.of(context);
+                                await AdsService().incrementLossAndMaybeShowInterstitial();
+                                nav.pop(true); // restart from checkpoint
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.refresh_rounded, color: diffColor, size: 22),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'RESTART',
+                                      style: TextStyle(
+                                        color: diffColor,
+                                        fontFamily: 'Courier',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        letterSpacing: 3,
+                                        shadows: [
+                                          Shadow(
+                                            color: _colorWithOpacity(diffColor, 0.5),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Menu button
+                          SizedBox(
+                            width: 220,
+                            child: GlassCard(
+                              borderColor: _colorWithOpacity(Colors.white, 0.2),
+                              backgroundColor: _colorWithOpacity(Colors.white, 0.03),
+                              padding: EdgeInsets.zero,
+                              borderRadius: 14,
+                              onTap: () async {
+                                AudioManager().playSfx('click.wav');
+                                final nav = Navigator.of(context);
+                                await AdsService().incrementLossAndMaybeShowInterstitial();
+                                nav.pushNamedAndRemoveUntil('/', (route) => false);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.home_rounded, color: _colorWithOpacity(Colors.white, 0.5), size: 20),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'MENU',
+                                      style: TextStyle(
+                                        color: _colorWithOpacity(Colors.white, 0.5),
+                                        fontFamily: 'Courier',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        letterSpacing: 3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                    minimumSize: const Size(110, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  onPressed: () async {
-                    AudioManager().playSfx('click.wav');
-                    final nav = Navigator.of(context);
-                    await AdsService().incrementLossAndMaybeShowInterstitial();
-                    nav.pushNamedAndRemoveUntil('/', (route) => false);
-                  },
-                  child: const Text("Menu", style: TextStyle(fontSize: 14)),
-                ),
-              ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
