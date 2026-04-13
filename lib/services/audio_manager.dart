@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simple audio manager to centralize background music and SFX usage.
@@ -13,9 +14,11 @@ class AudioManager {
 
   bool musicEnabled = true;
   bool soundEnabled = true;
+  bool vibrationEnabled = true;
 
   static const _prefMusicKey = 'pref_music_enabled';
   static const _prefSoundKey = 'pref_sound_enabled';
+  static const _prefVibrationKey = 'pref_vibration_enabled';
 
   Future<void> init() async {
     try {
@@ -25,6 +28,7 @@ class AudioManager {
       final prefs = await SharedPreferences.getInstance();
       musicEnabled = prefs.getBool(_prefMusicKey) ?? true;
       soundEnabled = prefs.getBool(_prefSoundKey) ?? true;
+      vibrationEnabled = prefs.getBool(_prefVibrationKey) ?? true;
     } catch (e) {
       debugPrint('AudioManager init error: $e');
     }
@@ -79,6 +83,42 @@ class AudioManager {
     soundEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefSoundKey, enabled);
+  }
+
+  Future<void> setVibrationEnabled(bool enabled) async {
+    vibrationEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefVibrationKey, enabled);
+    // Give feedback when enabling
+    if (enabled) {
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  // --- Haptic Feedback Helpers (respect vibrationEnabled) --- //
+  void hapticLight() {
+    if (!vibrationEnabled) return;
+    HapticFeedback.lightImpact();
+  }
+
+  void hapticMedium() {
+    if (!vibrationEnabled) return;
+    HapticFeedback.mediumImpact();
+  }
+
+  void hapticHeavy() {
+    if (!vibrationEnabled) return;
+    HapticFeedback.heavyImpact();
+  }
+
+  void hapticSelection() {
+    if (!vibrationEnabled) return;
+    HapticFeedback.selectionClick();
+  }
+
+  void hapticVibrate() {
+    if (!vibrationEnabled) return;
+    HapticFeedback.vibrate();
   }
 
   Future<void> dispose() async {

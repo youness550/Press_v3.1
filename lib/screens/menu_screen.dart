@@ -161,6 +161,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           TextButton(
             onPressed: () {
               AudioManager().playSfx('click.wav');
+              AudioManager().hapticSelection();
               Navigator.pop(c, false);
             },
             child: Text(
@@ -179,6 +180,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
             child: TextButton(
               onPressed: () {
                 AudioManager().playSfx('click.wav');
+                AudioManager().hapticSelection();
                 Navigator.pop(c, true);
               },
               child: Text(
@@ -202,6 +204,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
   void _onDifficultyTap(String difficulty) {
     if (!_ready) return;
     AudioManager().playSfx('click.wav');
+    AudioManager().hapticSelection();
     if (!mounted) return;
 
     if (difficulty == 'master') {
@@ -274,6 +277,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                   icon: const Icon(Icons.storefront_rounded, color: Color(0xFF00FF66), size: 24),
                   onPressed: () {
                     AudioManager().playSfx('click.wav');
+                    AudioManager().hapticSelection();
                     _openStore();
                   },
                 ),

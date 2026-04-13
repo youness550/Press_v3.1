@@ -313,6 +313,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           currentQuestionIndex++;
         });
         AudioManager().playSfx('ping.wav');
+        AudioManager().hapticMedium();
         _nodeTransitionController.forward(from: 0);
         startLevel();
       } else {
@@ -428,6 +429,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     // Play fail sound and stop music
     AudioManager().playSfx('fail.wav');
+    AudioManager().hapticHeavy();
+    // Repeated vibration burst for dramatic failure feel
+    Future.delayed(const Duration(milliseconds: 100), () => AudioManager().hapticHeavy());
+    Future.delayed(const Duration(milliseconds: 200), () => AudioManager().hapticHeavy());
+    Future.delayed(const Duration(milliseconds: 350), () => AudioManager().hapticVibrate());
     try {
       AudioManager().stopBackground();
       debugPrint('Background music stopped due to failure');
@@ -510,6 +516,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               () async {
                 if (!mounted) return;
                 AudioManager().playSfx('click.wav');
+                AudioManager().hapticSelection();
                 Navigator.pop(context);
                 String next = 'medium';
                 if (difficulty.toLowerCase() == 'easy') {
@@ -529,6 +536,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               _colorWithOpacity(Colors.white, 0.4),
               () async {
                 AudioManager().playSfx('click.wav');
+                AudioManager().hapticSelection();
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
               },
             ),
@@ -617,6 +625,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   : (_) async {
                                       if (isFailing || _isPaused) return;
                                       AudioManager().playSfx('click.wav');
+                                      AudioManager().hapticLight();
                                       _pressController.forward();
                                       setState(() => isPressed = true);
                                     },
@@ -933,6 +942,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   backgroundColor: _colorWithOpacity(Colors.black, 0.7),
                   onPressed: (isFailing || _dramaticController.isAnimating) ? null : () async {
                     AudioManager().playSfx('click.wav');
+                    AudioManager().hapticSelection();
                     if (_isPaused) {
                       setState(() {
                         _isPaused = false;
@@ -984,8 +994,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               borderColor: _colorWithOpacity(diffColor, 0.3),
                               backgroundColor: _colorWithOpacity(diffColor, 0.05),
                               padding: const EdgeInsets.all(20),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                              child: Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 24,
+                                runSpacing: 16,
                                 children: [
                                   _buildToggle('MUSIC', AudioManager().musicEnabled, diffColor, (v) async {
                                     await AudioManager().setMusicEnabled(v);
@@ -994,10 +1006,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                     }
                                     setState(() {});
                                   }),
-                                  const SizedBox(width: 32),
                                   _buildToggle('SOUND', AudioManager().soundEnabled, diffColor, (v) async {
                                     await AudioManager().setSoundEnabled(v);
                                     if (v) { try { await AudioManager().playSfx('click.wav'); } catch (_) {} }
+                                    setState(() {});
+                                  }),
+                                  _buildToggle('VIBRATION', AudioManager().vibrationEnabled, diffColor, (v) async {
+                                    await AudioManager().setVibrationEnabled(v);
                                     setState(() {});
                                   }),
                                 ],
@@ -1013,6 +1028,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               Icons.play_arrow_rounded,
                               () async {
                                 AudioManager().playSfx('click.wav');
+                                AudioManager().hapticSelection();
                                 setState(() {
                                   _isPaused = false;
                                   startLevelTimer();
@@ -1029,6 +1045,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               Icons.refresh_rounded,
                               () async {
                                 AudioManager().playSfx('click.wav');
+                                AudioManager().hapticSelection();
                                 timer?.cancel();
                                 setState(() {
                                   _isPaused = false;
@@ -1371,6 +1388,7 @@ class _GameOverScreenState extends State<GameOverScreen> with TickerProviderStat
                               borderRadius: 14,
                               onTap: () async {
                                 AudioManager().playSfx('click.wav');
+                                AudioManager().hapticSelection();
                                 final nav = Navigator.of(context);
                                 await AdsService().incrementLossAndMaybeShowInterstitial();
                                 nav.pop(true); // restart from checkpoint
@@ -1416,6 +1434,7 @@ class _GameOverScreenState extends State<GameOverScreen> with TickerProviderStat
                               borderRadius: 14,
                               onTap: () async {
                                 AudioManager().playSfx('click.wav');
+                                AudioManager().hapticSelection();
                                 final nav = Navigator.of(context);
                                 await AdsService().incrementLossAndMaybeShowInterstitial();
                                 nav.pushNamedAndRemoveUntil('/', (route) => false);
