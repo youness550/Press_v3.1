@@ -1,4 +1,9 @@
 // Moved question list data here for modularity.
+// Test difficulty: just one question for testing
+final List<Map<String, dynamic>> testQuestions = [
+  {"q": "TEST MODE: CLICK ONCE", "type": "click", "target": 1, "sec": 10.0},
+];
+
 // Medium questions (existing set)
 final List<Map<String, dynamic>> mediumQuestions = [
   {"q": "INITIALIZE HACK: 5 CLICKS", "type": "click", "target": 5, "sec": 5.0},
@@ -142,6 +147,8 @@ final List<Map<String, dynamic>> easyQuestions = [
 // Helper to obtain list by difficulty key
 List<Map<String, dynamic>> questionsForDifficulty(String difficulty) {
   switch (difficulty.toLowerCase()) {
+    case 'test':
+      return List<Map<String, dynamic>>.from(testQuestions);
     case 'easy':
       return List<Map<String, dynamic>>.from(easyQuestions);
     case 'hard':

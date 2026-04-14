@@ -559,6 +559,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 AudioManager().playSfx('click.wav');
                 AudioManager().hapticSelection();
                 Navigator.of(c).pop();
+                if (!mounted) return;
+                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
               },
             ),
           ],
