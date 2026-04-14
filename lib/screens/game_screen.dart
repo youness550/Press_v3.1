@@ -470,7 +470,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
       showDialog(
         context: context,
-        barrierDismissible: false,
+        barrierDismissible: true,
         builder: (c) => AlertDialog(
           backgroundColor: const Color(0xF0050505),
           shape: RoundedRectangleBorder(
@@ -498,7 +498,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 12),
               Text(
-                'Move to next level?',
+                'Choose what to do next.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _colorWithOpacity(Colors.white, 0.6),
@@ -517,14 +517,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 if (!mounted) return;
                 AudioManager().playSfx('click.wav');
                 AudioManager().hapticSelection();
-                Navigator.pop(context);
+                Navigator.of(c).pop();
                 String next = 'medium';
-                if (difficulty.toLowerCase() == 'easy') {
-                  next = 'medium';
-                } else if (difficulty.toLowerCase() == 'medium') {
-                  next = 'hard';
-                } else {
-                  next = 'hard';
+                switch (difficulty.toLowerCase()) {
+                  case 'easy':
+                    next = 'medium';
+                    break;
+                  case 'medium':
+                    next = 'hard';
+                    break;
+                  case 'hard':
+                    next = 'master';
+                    break;
+                  case 'master':
+                    next = 'extreme';
+                    break;
+                  default:
+                    next = difficulty;
                 }
                 if (!mounted) return;
                 Navigator.of(context).pushReplacementNamed('/game', arguments: next);
@@ -537,7 +546,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               () async {
                 AudioManager().playSfx('click.wav');
                 AudioManager().hapticSelection();
+                Navigator.of(c).pop();
+                if (!mounted) return;
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildDialogButton(
+              'Close',
+              _colorWithOpacity(Colors.white, 0.25),
+              () {
+                AudioManager().playSfx('click.wav');
+                AudioManager().hapticSelection();
+                Navigator.of(c).pop();
               },
             ),
           ],

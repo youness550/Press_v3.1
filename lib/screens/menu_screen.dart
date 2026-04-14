@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:pressing_under_pressure/services/audio_manager.dart';
 import 'package:pressing_under_pressure/ui/components/loading_bar.dart';
 import 'package:pressing_under_pressure/ui/components/background_beams.dart';
@@ -25,7 +24,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
   late AnimationController _loadingController;
   late Animation<double> _loadingAnimation;
   bool _ready = false;
-  static const String _storeUrl = 'https://apps.apple.com/us/developer/imad-hamidi/id1781018469';
 
   // Staggered entrance animations
   late AnimationController _entranceController;
@@ -109,19 +107,102 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     super.dispose();
   }
 
-  /// Open the developer store page in an external browser/app.
-  Future<void> _openStore() async {
-    final Uri uri = Uri.parse(_storeUrl);
-    try {
-      final bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!mounted) return;
-      if (!launched) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open store link')));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open store link')));
-    }
+  Future<void> _showSettingsMenu() async {
+    final Color neon = const Color(0xFF00FF66);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                Future<void> handleToggle(Future<void> Function() task) async {
+                  await task();
+                  if (!mounted) return;
+                  setState(() {});
+                  setModalState(() {});
+                }
+
+                return GlassCard(
+                  borderColor: _colorWithOpacity(neon, 0.35),
+                  backgroundColor: _colorWithOpacity(const Color(0xFF021105), 0.95),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                  borderRadius: 18,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.tune_rounded, color: _colorWithOpacity(neon, 0.9), size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'SETTINGS',
+                            style: TextStyle(
+                              color: _colorWithOpacity(neon, 0.95),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Courier',
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: Icon(Icons.close_rounded, color: _colorWithOpacity(Colors.white, 0.7)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _buildQuickToggle(
+                        label: 'MUSIC',
+                        value: AudioManager().musicEnabled,
+                        onChanged: (v) async {
+                          await handleToggle(() async {
+                            await AudioManager().setMusicEnabled(v);
+                            if (v) {
+                              try {
+                                await AudioManager().playBackground('sounds/bg_loop.mp3');
+                              } catch (_) {}
+                            }
+                          });
+                        },
+                      ),
+                      _buildQuickToggle(
+                        label: 'SOUND',
+                        value: AudioManager().soundEnabled,
+                        onChanged: (v) async {
+                          await handleToggle(() async {
+                            await AudioManager().setSoundEnabled(v);
+                            if (v) {
+                              try {
+                                await AudioManager().playSfx('click.wav');
+                              } catch (_) {}
+                            }
+                          });
+                        },
+                      ),
+                      _buildQuickToggle(
+                        label: 'VIBRATION',
+                        value: AudioManager().vibrationEnabled,
+                        onChanged: (v) async {
+                          await handleToggle(() async {
+                            await AudioManager().setVibrationEnabled(v);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showUnlockDialog(String title, String message, String proceedText, String difficulty) async {
@@ -264,7 +345,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           // Dark overlay
           Container(color: _colorWithOpacity(Colors.black, 0.25)),
 
-          // Store button (top-right)
+          // Menu button (top-right)
           Positioned(
             top: 8,
             right: 8,
@@ -282,11 +363,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                   ],
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.storefront_rounded, color: Color(0xFF00FF66), size: 24),
+                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF00FF66), size: 24),
                   onPressed: () {
                     AudioManager().playSfx('click.wav');
                     AudioManager().hapticSelection();
-                    _openStore();
+                    _showSettingsMenu();
                   },
                 ),
               ),
@@ -417,63 +498,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                               bestScore: ProgressService().getBestScore('extreme'),
                             ),
                           ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    FadeTransition(
-                      opacity: _cardsFade,
-                      child: SizedBox(
-                        width: cardWidth,
-                        child: GlassCard(
-                          borderColor: _colorWithOpacity(const Color(0xFF00FF66), 0.28),
-                          backgroundColor: _colorWithOpacity(const Color(0xFF00FF66), 0.05),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          child: Wrap(
-                            alignment: WrapAlignment.spaceAround,
-                            runSpacing: 8,
-                            children: [
-                              _buildQuickToggle(
-                                label: 'MUSIC',
-                                value: AudioManager().musicEnabled,
-                                onChanged: (v) async {
-                                  await AudioManager().setMusicEnabled(v);
-                                  if (v) {
-                                    try {
-                                      await AudioManager().playBackground('sounds/bg_loop.mp3');
-                                    } catch (_) {}
-                                  }
-                                  if (!mounted) return;
-                                  setState(() {});
-                                },
-                              ),
-                              _buildQuickToggle(
-                                label: 'SOUND',
-                                value: AudioManager().soundEnabled,
-                                onChanged: (v) async {
-                                  await AudioManager().setSoundEnabled(v);
-                                  if (v) {
-                                    try {
-                                      await AudioManager().playSfx('click.wav');
-                                    } catch (_) {}
-                                  }
-                                  if (!mounted) return;
-                                  setState(() {});
-                                },
-                              ),
-                              _buildQuickToggle(
-                                label: 'VIBRATION',
-                                value: AudioManager().vibrationEnabled,
-                                onChanged: (v) async {
-                                  await AudioManager().setVibrationEnabled(v);
-                                  if (!mounted) return;
-                                  setState(() {});
-                                },
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ),
@@ -633,19 +657,19 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     required ValueChanged<bool> onChanged,
   }) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: _colorWithOpacity(const Color(0xFF00FF66), 0.82),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Courier',
-            letterSpacing: 1.2,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: _colorWithOpacity(const Color(0xFF00FF66), 0.82),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Courier',
+              letterSpacing: 1.2,
+            ),
           ),
         ),
-        const SizedBox(width: 6),
         Switch.adaptive(
           value: value,
           onChanged: onChanged,
