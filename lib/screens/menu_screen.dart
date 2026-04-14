@@ -460,7 +460,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                             const SizedBox(height: 10),
                             _buildDifficultyCard(
                               title: 'MEDIUM',
-                              subtitle: '53 nodes • Standard pressure',
+                              subtitle: '30 nodes • Standard pressure',
                               icon: Icons.flash_on_rounded,
                               color: const Color(0xFFFF9900),
                               difficulty: 'medium',
@@ -470,7 +470,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                             const SizedBox(height: 10),
                             _buildDifficultyCard(
                               title: 'HARD',
-                              subtitle: '50 nodes • No room for error',
+                              subtitle: '40 nodes • No room for error',
                               icon: Icons.local_fire_department_rounded,
                               color: const Color(0xFFFF3344),
                               difficulty: 'hard',
@@ -480,9 +480,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                             const SizedBox(height: 10),
                             _buildDifficultyCard(
                               title: 'MASTER',
-                              subtitle: '50 nodes • 40% less time',
+                              subtitle: '50 nodes • Zero mistakes',
                               icon: Icons.emoji_events_rounded,
-                              color: const Color(0xFFFF8C00),
+                              color: const Color.fromARGB(255, 242, 255, 0),
                               difficulty: 'master',
                               locked: !_isMasterUnlocked,
                               bestScore: ProgressService().getBestScore('master'),
@@ -492,7 +492,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                               title: 'EXTREME',
                               subtitle: 'Instant death • No mercy',
                               icon: Icons.dangerous_rounded,
-                              color: const Color(0xFFCC0033),
+                              color: const Color.fromARGB(255, 0, 139, 204),
                               difficulty: 'extreme',
                               locked: !_isExtremeUnlocked,
                               bestScore: ProgressService().getBestScore('extreme'),
