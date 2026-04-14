@@ -1,4 +1,30 @@
 // Moved question list data here for modularity.
+
+// Easy questions: 20 questions. The first two must always be Q1 (PRESS) and Q2 (NOT PRESS)
+final List<Map<String, dynamic>> easyQuestions = [
+  {"q": "PRESS", "type": "click", "target": 1, "sec": 6.0},
+  {"q": "NOT PRESS", "type": "wait", "target": 0, "sec": 6.0},
+  {"q": "SIMPLE: CLICK ONCE", "type": "click", "target": 1, "sec": 5.0},
+  {"q": "ONE MORE CLICK", "type": "click", "target": 1, "sec": 5.0},
+  {"q": "HOLD... DO NOT PRESS", "type": "wait", "target": 0, "sec": 4.5},
+  {"q": "CLICK TWICE QUICKLY", "type": "click", "target": 2, "sec": 5.0},
+  {"q": "PRESS FOR A STAR", "type": "click", "target": 1, "sec": 6.5},
+  {"q": "SIMPLE MATH: 2+1", "type": "click", "target": 3, "sec": 7.0},
+  {"q": "RELAX: DON'T PRESS", "type": "wait", "target": 0, "sec": 4.0},
+  {"q": "CLICK THE NUMBER OF EYES YOU HAVE", "type": "click", "target": 2, "sec": 7.0},
+  {"q": "ONE LAST CLICK", "type": "click", "target": 1, "sec": 4.0},
+  {"q": "GENTLE TAP", "type": "click", "target": 1, "sec": 4.5},
+  {"q": "CALM... WAIT", "type": "wait", "target": 0, "sec": 4.0},
+  {"q": "PRESS IF YOU LIKE STARS", "type": "click", "target": 1, "sec": 6.0},
+  {"q": "CLICK THE SUM OF 1+1", "type": "click", "target": 2, "sec": 6.5},
+  {"q": "DO NOT PRESS YET", "type": "wait", "target": 0, "sec": 3.0},
+  {"q": "SMALL TAP", "type": "click", "target": 1, "sec": 5.5},
+  {"q": "PRESS FOR A SMILE", "type": "click", "target": 1, "sec": 4.0},
+  {"q": "SHORT PAUSE", "type": "wait", "target": 0, "sec": 3.5},
+  {"q": "FINAL GENTLE TAP", "type": "click", "target": 1, "sec": 5.0},
+];
+
+
 // Medium questions (existing set)
 final List<Map<String, dynamic>> mediumQuestions = [
   {"q": "INITIALIZE HACK: 5 CLICKS", "type": "click", "target": 5, "sec": 5.0},
@@ -111,32 +137,30 @@ List<Map<String, dynamic>> hardQuestions = [
   {"q": "DOUBLE PRESS", "type": "click", "target": 2, "sec": 3.0},
   {"q": "PRESS 2*2*2 TIMES", "type": "click", "target": 8, "sec": 10.0},
   {"q": "WAIT FOR THE SYSTEM RECOVERY", "type": "wait", "target": 0, "sec": 6.0},
-  {"q": "CLICK THE NUMBER OF STATES IN USA", "type": "click", "target": 50, "sec": 30.0},
+          {"q": "CLICK THE NUMBER OF STATES IN USA", "type": "click", "target": 50, "sec": 30.0},
   {"q": "GAME OVER? NO, CLICK 1 TIME", "type": "click", "target": 1, "sec": 5.0}
 ];
 
-// Easy questions: 20 questions. The first two must always be Q1 (PRESS) and Q2 (NOT PRESS)
-final List<Map<String, dynamic>> easyQuestions = [
-  {"q": "PRESS", "type": "click", "target": 1, "sec": 6.0},
-  {"q": "NOT PRESS", "type": "wait", "target": 0, "sec": 6.0},
-  {"q": "SIMPLE: CLICK ONCE", "type": "click", "target": 1, "sec": 5.0},
-  {"q": "ONE MORE CLICK", "type": "click", "target": 1, "sec": 5.0},
-  {"q": "HOLD... DO NOT PRESS", "type": "wait", "target": 0, "sec": 4.5},
-  {"q": "CLICK TWICE QUICKLY", "type": "click", "target": 2, "sec": 5.0},
-  {"q": "PRESS FOR A STAR", "type": "click", "target": 1, "sec": 6.5},
-  {"q": "SIMPLE MATH: 2+1", "type": "click", "target": 3, "sec": 7.0},
-  {"q": "RELAX: DON'T PRESS", "type": "wait", "target": 0, "sec": 4.0},
-  {"q": "CLICK THE NUMBER OF EYES YOU HAVE", "type": "click", "target": 2, "sec": 7.0},
-  {"q": "ONE LAST CLICK", "type": "click", "target": 1, "sec": 4.0},
-  {"q": "GENTLE TAP", "type": "click", "target": 1, "sec": 4.5},
-  {"q": "CALM... WAIT", "type": "wait", "target": 0, "sec": 4.0},
-  {"q": "PRESS IF YOU LIKE STARS", "type": "click", "target": 1, "sec": 6.0},
-  {"q": "CLICK THE SUM OF 1+1", "type": "click", "target": 2, "sec": 6.5},
-  {"q": "DO NOT PRESS YET", "type": "wait", "target": 0, "sec": 3.0},
-  {"q": "SMALL TAP", "type": "click", "target": 1, "sec": 5.5},
-  {"q": "PRESS FOR A SMILE", "type": "click", "target": 1, "sec": 4.0},
-  {"q": "SHORT PAUSE", "type": "wait", "target": 0, "sec": 3.5},
-  {"q": "FINAL GENTLE TAP", "type": "click", "target": 1, "sec": 5.0},
+
+
+
+// master questions placeholder: 25 difficult questions (can be populated later)
+List<Map<String, dynamic>> masterQuestions = [
+  {"q": "THE NEXT LEVEL IS A LIE. CLICK 0", "type": "wait", "target": 0, "sec": 3.0},
+  {"q": "CLICK THE VOWELS IN 'ALPHABET'", "type": "click", "target": 3, "sec": 6.0},
+  {"q": "PRESS 12+12-20 TIMES", "type": "click", "target": 4, "sec": 6.0},
+  {"q": "WAIT... ALMOST THERE...", "type": "wait", "target": 0, "sec": 5.0},
+  {"q": "ONLY CLICK AT THE LAST SECOND", "type": "last_second", "target": 1, "sec": 4.0},
+  {"q": "STOP! DON'T TOUCH!", "type": "wait", "target": 0, "sec": 4.0}
+];
+
+// extreme questions placeholder: 25 difficult questions (can be populated later)
+List<Map<String, dynamic>> extremeQuestions = [
+  {"q": "ERROR! CLICK 2 TIMES TO FIX", "type": "click", "target": 2, "sec": 5.0},
+  {"q": "LOADING VIRUS... DON'T TOUCH", "type": "wait", "target": 0, "sec": 5.0},
+  {"q": "DOUBLE PRESS", "type": "click", "target": 2, "sec": 3.0},
+  {"q": "PRESS 2*2*2 TIMES", "type": "click", "target": 8, "sec": 10.0},
+  {"q": "WAIT FOR THE SYSTEM RECOVERY", "type": "wait", "target": 0, "sec": 6.0}
 ];
 
 // Helper to obtain list by difficulty key
@@ -147,18 +171,9 @@ List<Map<String, dynamic>> questionsForDifficulty(String difficulty) {
     case 'hard':
       return List<Map<String, dynamic>>.from(hardQuestions);
     case 'master':
-      // Master is basically Hard but with 40% less time.
-      return hardQuestions.map((q) => {
-        ...q,
-        'sec': (q['sec'] as double) * 0.6,
-      }).toList();
+      return List<Map<String, dynamic>>.from(masterQuestions);
     case 'extreme':
-      // Extreme is 80% less time and requires slightly more clicks to make it brutal.
-      return hardQuestions.map((q) => {
-        ...q,
-        'sec': (q['sec'] as double) * 0.2,
-        'target': q['type'] == 'click' ? (q['target'] as int) + 2 : q['target'],
-      }).toList();
+      return List<Map<String, dynamic>>.from(extremeQuestions);
     case 'medium':
     default:
       return List<Map<String, dynamic>>.from(mediumQuestions);

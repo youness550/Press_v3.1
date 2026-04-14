@@ -210,7 +210,7 @@ class AdsService {
     _lossCount++;
     await _saveLossCount();
     debugPrint('AdsService: loss count=$_lossCount');
-    const lossThreshold = 5;
+    const lossThreshold = 3; // Show interstitial every 3 losses
     if (_lossCount >= lossThreshold) {
       _lossCount = 0;
       await _saveLossCount();

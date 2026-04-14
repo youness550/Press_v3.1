@@ -213,7 +213,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final adShowing = GamePauseNotifier.instance.notifier.value;
     if (adShowing) {
       // Pause gameplay and remember that ad paused it
-      _pausedByAd = !_isPaused; // only mark if we are not already paused
+      _pausedByAd = true;
       timer?.cancel();
       setState(() {
         _isPaused = true;
@@ -222,9 +222,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       // Resume only if the ad had paused gameplay
       if (_pausedByAd) {
         _pausedByAd = false;
-        setState(() {
-          _isPaused = false;
-        });
+        _isPaused = false;
+        setState(() {});
         // Restart the timer where it left off
         startLevelTimer();
         try { if (AudioManager().musicEnabled) { AudioManager().resumeBackground(); } } catch (_) {}
@@ -342,9 +341,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       }
     });
 
+    // Show interstitial ad immediately after fail animation
+    await AdsService().incrementLossAndMaybeShowInterstitial();
+    
+    if (!mounted) return;
+
     dynamic restart;
     try {
-      // Show GameOver screen, ad logic handled inside GameOverScreen
+      // Show GameOver screen
       final navigator = Navigator.of(context);
       restart = await navigator.push<dynamic>(MaterialPageRoute(
         builder: (c) => GameOverScreen(
@@ -1439,11 +1443,10 @@ class _GameOverScreenState extends State<GameOverScreen> with TickerProviderStat
                               backgroundColor: _colorWithOpacity(diffColor, 0.1),
                               padding: EdgeInsets.zero,
                               borderRadius: 14,
-                              onTap: () async {
+                              onTap: () {
                                 AudioManager().playSfx('click.wav');
                                 AudioManager().hapticSelection();
                                 final nav = Navigator.of(context);
-                                await AdsService().incrementLossAndMaybeShowInterstitial();
                                 nav.pop(true); // restart from checkpoint
                               },
                               child: Padding(
@@ -1485,11 +1488,10 @@ class _GameOverScreenState extends State<GameOverScreen> with TickerProviderStat
                               backgroundColor: _colorWithOpacity(Colors.white, 0.03),
                               padding: EdgeInsets.zero,
                               borderRadius: 14,
-                              onTap: () async {
+                              onTap: () {
                                 AudioManager().playSfx('click.wav');
                                 AudioManager().hapticSelection();
                                 final nav = Navigator.of(context);
-                                await AdsService().incrementLossAndMaybeShowInterstitial();
                                 nav.pushNamedAndRemoveUntil('/', (route) => false);
                               },
                               child: Padding(
