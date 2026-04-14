@@ -475,35 +475,65 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           backgroundColor: const Color(0xF0050505),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: _colorWithOpacity(diffColor, 0.5), width: 1.5),
+            side: BorderSide(color: _colorWithOpacity(diffColor, 0.8), width: 2.5),
           ),
-          title: NeonText(
-            text: '◆ SYSTEM COMPROMISED ◆',
-            fontSize: 18,
-            color: diffColor,
-            enableFlicker: true,
-            enableGlitch: false,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NeonText(
+                text: '◆ SYSTEM COMPROMISED ◆',
+                fontSize: 20,
+                color: diffColor,
+                enableFlicker: true,
+                enableGlitch: false,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: 2,
+                width: 100,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _colorWithOpacity(diffColor, 0),
+                      _colorWithOpacity(diffColor, 1),
+                      _colorWithOpacity(diffColor, 0),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'All nodes breached!',
+                '▸ ALL NODES BREACHED ▸',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: _colorWithOpacity(Colors.white, 0.8),
+                  color: diffColor,
                   fontFamily: 'Courier',
-                  fontSize: 14,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Security protocols overwhelmed. System access gained.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _colorWithOpacity(Colors.white, 0.7),
+                  fontFamily: 'Courier',
+                  fontSize: 13,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Choose what to do next.',
+                'Select your next action:',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _colorWithOpacity(Colors.white, 0.6),
                   fontFamily: 'Courier',
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -511,7 +541,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           actionsAlignment: MainAxisAlignment.center,
           actions: [
             _buildDialogButton(
-              'Next Level',
+              'NEXT LEVEL',
               diffColor,
               () async {
                 if (!mounted) return;
@@ -541,20 +571,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(width: 8),
             _buildDialogButton(
-              'Menu',
-              _colorWithOpacity(Colors.white, 0.4),
+              'RETRY LEVEL',
+              _colorWithOpacity(Colors.white, 0.5),
               () async {
                 AudioManager().playSfx('click.wav');
                 AudioManager().hapticSelection();
                 Navigator.of(c).pop();
                 if (!mounted) return;
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                Navigator.of(context).pushReplacementNamed('/game', arguments: difficulty);
               },
             ),
             const SizedBox(width: 8),
             _buildDialogButton(
-              'Close',
-              _colorWithOpacity(Colors.white, 0.25),
+              'BACK TO MENU',
+              _colorWithOpacity(Colors.white, 0.35),
               () {
                 AudioManager().playSfx('click.wav');
                 AudioManager().hapticSelection();

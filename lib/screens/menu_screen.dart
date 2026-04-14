@@ -449,16 +449,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                         child: Column(
                           children: [
                             _buildDifficultyCard(
-                              title: 'TEST',
-                              subtitle: '1 node • Quick test',
-                              icon: Icons.bug_report_rounded,
-                              color: const Color(0xFF6666FF),
-                              difficulty: 'test',
-                              locked: false,
-                              bestScore: ProgressService().getBestScore('test'),
-                            ),
-                            const SizedBox(height: 10),
-                            _buildDifficultyCard(
                               title: 'EASY',
                               subtitle: '20 nodes • Generous time',
                               icon: Icons.shield_outlined,
