@@ -89,8 +89,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _initAudioSettings();
+
     _isMasterUnlocked = ProgressService().isMasterUnlocked();
     _isExtremeUnlocked = ProgressService().isExtremeUnlocked();
+  }
+
+  Future<void> _initAudioSettings() async {
+    await AudioManager().init();
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -413,6 +421,63 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                       ),
                     ),
 
+                    const SizedBox(height: 16),
+
+                    FadeTransition(
+                      opacity: _cardsFade,
+                      child: SizedBox(
+                        width: cardWidth,
+                        child: GlassCard(
+                          borderColor: _colorWithOpacity(const Color(0xFF00FF66), 0.28),
+                          backgroundColor: _colorWithOpacity(const Color(0xFF00FF66), 0.05),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          child: Wrap(
+                            alignment: WrapAlignment.spaceAround,
+                            runSpacing: 8,
+                            children: [
+                              _buildQuickToggle(
+                                label: 'MUSIC',
+                                value: AudioManager().musicEnabled,
+                                onChanged: (v) async {
+                                  await AudioManager().setMusicEnabled(v);
+                                  if (v) {
+                                    try {
+                                      await AudioManager().playBackground('sounds/bg_loop.mp3');
+                                    } catch (_) {}
+                                  }
+                                  if (!mounted) return;
+                                  setState(() {});
+                                },
+                              ),
+                              _buildQuickToggle(
+                                label: 'SOUND',
+                                value: AudioManager().soundEnabled,
+                                onChanged: (v) async {
+                                  await AudioManager().setSoundEnabled(v);
+                                  if (v) {
+                                    try {
+                                      await AudioManager().playSfx('click.wav');
+                                    } catch (_) {}
+                                  }
+                                  if (!mounted) return;
+                                  setState(() {});
+                                },
+                              ),
+                              _buildQuickToggle(
+                                label: 'VIBRATION',
+                                value: AudioManager().vibrationEnabled,
+                                onChanged: (v) async {
+                                  await AudioManager().setVibrationEnabled(v);
+                                  if (!mounted) return;
+                                  setState(() {});
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Version
@@ -559,6 +624,34 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickToggle({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _colorWithOpacity(const Color(0xFF00FF66), 0.82),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Courier',
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Switch.adaptive(
+          value: value,
+          onChanged: onChanged,
+          activeColor: const Color(0xFF00FF66),
+        ),
+      ],
     );
   }
 }

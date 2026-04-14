@@ -284,7 +284,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+			shellScript = "# Strip iCloud/Finder extended attributes that break codesigning\nfind \"${TARGET_BUILD_DIR}\" -exec xattr -cr {} \\; 2>/dev/null\nfind \"${PROJECT_DIR}/../build\" -exec xattr -cr {} \\; 2>/dev/null\n/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
 		};
 		5E719354570FE63107E6DF08 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -333,7 +333,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+			shellScript = "# Strip iCloud/Finder extended attributes that break codesigning\nfind \"${PROJECT_DIR}/..\" -name \"*.framework\" -exec xattr -cr {} \\; 2>/dev/null\nfind \"${TARGET_BUILD_DIR}\" -name \"*.framework\" -exec xattr -cr {} \\; 2>/dev/null\nfind \"${PROJECT_DIR}/../build\" -exec xattr -cr {} \\; 2>/dev/null\n/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
 		A886296F739409A2715EBB93 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

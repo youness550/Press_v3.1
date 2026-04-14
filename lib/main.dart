@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:pressing_under_pressure/screens/menu_screen.dart';
 import 'package:pressing_under_pressure/screens/game_screen.dart';
+import 'package:pressing_under_pressure/screens/no_internet_screen.dart';
 import 'package:pressing_under_pressure/services/ads_service.dart';
 import 'package:pressing_under_pressure/services/progress_service.dart';
 
@@ -57,16 +60,110 @@ class PressingUnderPressure extends StatelessWidget {
           ),
         ),
       ),
-      // Define named routes for simple navigation between menu and game.
-      routes: {
-        '/': (c) => const MainMenuScreen(),
-        '/game': (c) {
-          final args = ModalRoute.of(c)?.settings.arguments;
-          final difficulty = (args is String) ? args : 'medium';
-          return GameScreen(difficulty: difficulty);
-        },
+      // Connectivity gate wraps the entire app
+      home: const ConnectivityGate(),
+    );
+  }
+}
+
+/// Wraps the app with a connectivity check.
+/// Shows [NoInternetScreen] when offline and the main app when online.
+/// Continuously listens for connectivity changes.
+class ConnectivityGate extends StatefulWidget {
+  const ConnectivityGate({super.key});
+
+  @override
+  State<ConnectivityGate> createState() => _ConnectivityGateState();
+}
+
+class _ConnectivityGateState extends State<ConnectivityGate> {
+  bool _isConnected = true; // optimistic default
+  bool _initialCheckDone = false;
+  late StreamSubscription<List<ConnectivityResult>> _subscription;
+
+  bool _hasWifiConnection(List<ConnectivityResult> results) {
+    return results.any((result) =>
+        result == ConnectivityResult.wifi ||
+        result == ConnectivityResult.ethernet);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+
+    // Listen for real-time changes
+    _subscription = Connectivity().onConnectivityChanged.listen((results) {
+      final connected = _hasWifiConnection(results);
+      if (mounted) {
+        setState(() => _isConnected = connected);
+      }
+    });
+  }
+
+  Future<void> _checkConnectivity() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      final connected = _hasWifiConnection(results);
+      if (mounted) {
+        setState(() {
+          _isConnected = connected;
+          _initialCheckDone = true;
+        });
+      }
+    } catch (_) {
+      // If check fails, fail closed to enforce Wi-Fi requirement.
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _initialCheckDone = true;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show nothing while checking (very brief)
+    if (!_initialCheckDone) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF000a00),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF00FF66)),
+        ),
+      );
+    }
+
+    if (!_isConnected) {
+      return NoInternetScreen(
+        onRetry: () => _checkConnectivity(),
+      );
+    }
+
+    // Connected — show the main app with navigator
+    return Navigator(
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/game':
+            final args = settings.arguments;
+            final difficulty = (args is String) ? args : 'medium';
+            return MaterialPageRoute(
+              builder: (_) => GameScreen(difficulty: difficulty),
+              settings: settings,
+            );
+          default:
+            return MaterialPageRoute(
+              builder: (_) => const MainMenuScreen(),
+              settings: settings,
+            );
+        }
       },
-      initialRoute: '/',
     );
   }
 }
