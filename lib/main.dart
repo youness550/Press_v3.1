@@ -81,10 +81,9 @@ class _ConnectivityGateState extends State<ConnectivityGate> {
   bool _initialCheckDone = false;
   late StreamSubscription<List<ConnectivityResult>> _subscription;
 
-  bool _hasWifiConnection(List<ConnectivityResult> results) {
-    return results.any((result) =>
-        result == ConnectivityResult.wifi ||
-        result == ConnectivityResult.ethernet);
+  bool _hasInternetConnection(List<ConnectivityResult> results) {
+    return results.isNotEmpty && 
+           !results.any((result) => result == ConnectivityResult.none);
   }
 
   @override
@@ -94,7 +93,7 @@ class _ConnectivityGateState extends State<ConnectivityGate> {
 
     // Listen for real-time changes
     _subscription = Connectivity().onConnectivityChanged.listen((results) {
-      final connected = _hasWifiConnection(results);
+      final connected = _hasInternetConnection(results);
       if (mounted) {
         setState(() => _isConnected = connected);
       }
@@ -104,7 +103,7 @@ class _ConnectivityGateState extends State<ConnectivityGate> {
   Future<void> _checkConnectivity() async {
     try {
       final results = await Connectivity().checkConnectivity();
-      final connected = _hasWifiConnection(results);
+      final connected = _hasInternetConnection(results);
       if (mounted) {
         setState(() {
           _isConnected = connected;

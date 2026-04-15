@@ -221,7 +221,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                         child: Column(
                           children: [
                             Text(
-                              'This game requires a\nWi-Fi connection to play.',
+                              'This game requires a\nCellular or Wi-Fi connection to play.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: _c(Colors.white, 0.85),
@@ -243,7 +243,7 @@ class _NoInternetScreenState extends State<NoInternetScreen>
                                 Icon(Icons.wifi_rounded, color: _c(const Color(0xFF00FF66), 0.6), size: 18),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Enable Wi-Fi',
+                                  'Enable Cellular or Wi-Fi',
                                   style: TextStyle(
                                     color: _c(const Color(0xFF00FF66), 0.7),
                                     fontSize: 13,
