@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:pressing_under_pressure/services/audio_manager.dart';
 import 'package:pressing_under_pressure/ui/components/loading_bar.dart';
 import 'package:pressing_under_pressure/ui/components/background_beams.dart';
@@ -193,6 +194,40 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                             await AudioManager().setVibrationEnabled(v);
                           });
                         },
+                      ),
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: _rateApp,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: _colorWithOpacity(const Color(0xFF00FF66), 0.4),
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Rate Us ⭐',
+                                style: TextStyle(
+                                  color: _colorWithOpacity(const Color(0xFF00FF66), 0.9),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Courier',
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.arrow_outward_rounded,
+                                color: _colorWithOpacity(const Color(0xFF00FF66), 0.7),
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -677,5 +712,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
         ),
       ],
     );
+  }
+
+  Future<void> _rateApp() async {
+    try {
+      await InAppReview.instance.openStoreListing(appStoreId: '6747324350');
+    } catch (e) {
+      debugPrint('Error opening App Store review: $e');
+    }
   }
 }
